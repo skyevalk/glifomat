@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Глифомат</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="ASCII-редактор: картинки, видео и камера в символы, дизеринг, эффекты, WebGL-слои, экспорт PNG/SVG/видео/HTML.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@300;400;500&family=Inter:wght@500&family=Poppins:wght@500&family=Space+Grotesk:wght@500&family=VT323&family=JetBrains+Mono:wght@500&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="board">
+  <header class="ticker" aria-label="Текущие настройки">
+    <div class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <dl class="tickers" id="readout"></dl>
+    <span class="tsep" aria-hidden="true"></span>
+    <dl class="tickers">
+      <div class="tick"><dt>Сетка</dt><dd id="tkGrid">—</dd></div>
+      <div class="tick"><dt>FPS</dt><dd id="fps">—</dd></div>
+    </dl>
+    <dl class="tick status"><dt>Источник</dt><dd id="statusLine">Демо-сцена</dd></dl>
+  </header>
+
+  <div class="main">
+    <section class="stage" id="stage" aria-label="Холст">
+      <div class="bar">
+        <span class="label">Холст</span>
+        <button class="chip" id="btnUpload" type="button">Загрузить</button>
+        <button class="chip" id="btnCamBar" type="button">Камера</button>
+        <button class="chip" id="btnPause" type="button" aria-pressed="false">Пауза</button>
+      </div>
+      <div class="wrap" id="wrap"><canvas id="cv" aria-label="ASCII-рендер"></canvas></div>
+      <div class="bar">
+        <div class="segbar" id="aspectHost" role="group" aria-label="Формат кадра"></div>
+        <label class="chip" for="c-bg">Фон <input type="color" id="c-bg"></label>
+        <span class="meter" style="margin-left:auto">Пробел — пауза · двойной клик по ползунку — сброс</span>
+      </div>
+      <div class="drop" id="drop" hidden>Отпусти файл</div>
+    </section>
+
+    <aside class="side">
+      <div class="brand">
+        <svg viewBox="0 0 200 200" aria-hidden="true" fill="none" stroke="rgb(232 231 225 / .45)" stroke-width="1">
+          <circle cx="60" cy="140" r="120"/>
+          <path d="M60 140V20M60 140L150 60M60 140H180"/>
+        </svg>
+        <h1>Глифомат</h1>
+        <p>Картинки, видео и камера в символы. Дизеринг, эффекты, WebGL-слои</p>
+        <div class="dots" aria-hidden="true"><i></i><i class="on"></i><i></i><i></i></div>
+      </div>
+
+      <div class="actions">
+        <button class="act" id="btnPresets" type="button"><span class="k">Пресеты</span><span class="v" id="presetCount">12</span><span class="s">готовых + свои</span><span class="arr" aria-hidden="true">↗</span></button>
+        <button class="act" id="btnRandom" type="button"><span class="k">Случайно</span><span class="v" id="rndCount">00</span><span class="s">новых наборов</span><span class="arr" aria-hidden="true">↻</span></button>
+        <button class="act stone" id="btnExport" type="button"><span class="k">Экспорт</span><span class="v">05</span><span class="s">форматов</span><span class="arr" aria-hidden="true">↗</span></button>
+      </div>
+
+      <div class="tabs" id="layerTabs" role="tablist" aria-label="Слои"></div>
+      <div class="controls" id="controls"></div>
+      <div class="controls" id="layerPanel" hidden></div>
+    </aside>
+  </div>
+</div>
+
+<div class="modal" id="mExport" hidden role="dialog" aria-modal="true" aria-labelledby="exT">
+  <div class="sheet">
+    <div class="sheet-h"><h3 id="exT">Экспорт</h3><button class="x" type="button" data-close>Закрыть</button></div>
+    <div class="row">
+      <div><b>Картинка PNG</b><span>Текущий кадр в размере холста или вдвое крупнее</span></div>
+      <div class="acts"><button class="btn" id="exPng" type="button">PNG</button><button class="btn ghost" id="exPng2" type="button">PNG ×2</button></div>
+    </div>
+    <div class="row">
+      <div><b>Вектор SVG</b><span>Каждый символ или точка — отдельный объект. Открывается в Illustrator и Figma, трассировать не нужно. Символы остаются живым текстом. WebGL-слои ложатся в файл картинкой</span></div>
+      <div class="acts"><button class="btn" id="exSvg" type="button">SVG</button></div>
+    </div>
+    <div class="row">
+      <div><b>Видео</b><span>Запись анимации прямо с холста. MP4 или WebM, смотря что умеет браузер. Мышь в кадре тоже пишется</span></div>
+      <div class="acts"><div class="opts mini" id="vidDur" style="--cols:3"></div><button class="btn" id="exVid" type="button">Записать</button></div>
+    </div>
+    <div class="row">
+      <div><b>HTML-фон для сайта</b><span>Один файл: движок, настройки и картинка. Вставляешь на сайт как живой фон. Видео-источник уходит первым кадром</span></div>
+      <div class="checks">
+        <label><input type="checkbox" id="exTr"> Прозрачный фон</label>
+        <label><input type="checkbox" id="exMouse" checked> Реакция на мышь</label>
+        <label>FPS <select id="exFps"><option value="24">24</option><option value="30">30</option><option value="60" selected>60</option></select></label>
+      </div>
+      <div class="acts"><button class="btn" id="exHtml" type="button">HTML</button></div>
+    </div>
+    <div class="row">
+      <div><b>Настройки</b><span>Все параметры одним файлом. Загрузишь обратно, и картинка соберётся так же</span></div>
+      <div class="acts"><button class="btn" id="exJson" type="button">Сохранить JSON</button><button class="btn ghost" id="imJson" type="button">Загрузить</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="mPresets" hidden role="dialog" aria-modal="true" aria-labelledby="prT">
+  <div class="sheet">
+    <div class="sheet-h"><h3 id="prT">Пресеты</h3><button class="x" type="button" data-close>Закрыть</button></div>
+    <div class="presets" id="presetGrid"></div>
+    <div class="lab"><span>Мои пресеты</span></div>
+    <div class="saved" id="savedList"></div>
+    <form class="saveform" id="saveForm">
+      <input class="txt" id="presetName" placeholder="Название, например «Синица — неон»" maxlength="40">
+      <button class="btn" type="submit">Сохранить</button>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden role="status"></div>
+<input type="file" id="fileIn" accept="image/*,video/*" hidden>
+<input type="file" id="jsonIn" accept=".json,application/json" hidden>
+
+<script src="js/engine.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
